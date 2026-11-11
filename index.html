@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heart</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;
+    background:
+      radial-gradient(ellipse at 50% 110%, #5b1a6e 0%, rgba(91,26,110,0) 55%),
+      radial-gradient(ellipse at 50% 40%, #241257 0%, #0c0824 70%);
+    font-family:"Trebuchet MS",Verdana,sans-serif;overflow:hidden;
+  }
+  canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+  #fx{z-index:2}
+  #stars{z-index:0}
+  #grid{
+    position:relative;z-index:1;display:grid;
+    grid-template-columns:repeat(16,min(5.2vw,30px));grid-auto-rows:min(5.2vw,30px);gap:3px;
+  }
+  .c{border-radius:5px;background:rgba(255,255,255,.045);transition:background .2s,box-shadow .3s,transform .3s}
+  .c.on{transform:scale(1.04)}
+  #btn{
+    position:relative;z-index:3;border:0;border-radius:999px;padding:18px 54px;cursor:pointer;
+    font:bold 22px "Trebuchet MS",Verdana,sans-serif;color:#fff;letter-spacing:.04em;
+    background:#e0115f;
+    box-shadow:0 0 28px rgba(255,90,170,.55),0 6px 0 rgba(0,0,0,.25);
+    text-shadow:0 2px 4px rgba(0,0,0,.35);
+  }
+  #btn:active{transform:translateY(3px);box-shadow:0 0 28px rgba(255,90,170,.55),0 3px 0 rgba(0,0,0,.25)}
+  #btn:focus-visible{outline:3px solid #fff;outline-offset:4px}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<canvas id="fx"></canvas>
+<button id="btn" type="button">CLICK HERE</button>
+<div id="grid"></div>
+<script>
+const p=["..####....####..",".######..######.","################","################","################",".##############.","..############..","...##########...","....########....",".....######.....","......####......",".......##......."];
+const grid=document.getElementById("grid"),cells=[];
+p.forEach((r,i)=>[...r].forEach((ch,j)=>{
+  const d=document.createElement("div");d.className="c";grid.appendChild(d);
+  cells.push({d,on:ch==="#",hue:(j*22+i*14)%360});
+}));
+
+/* stars */
+const sc=document.getElementById("stars"),sx=sc.getContext("2d");
+function drawStars(){
+  sc.width=innerWidth;sc.height=innerHeight;sx.clearRect(0,0,sc.width,sc.height);
+  for(let i=0;i<110;i++){
+    sx.globalAlpha=.25+Math.random()*.6;sx.fillStyle="#fff";
+    sx.beginPath();sx.arc(Math.random()*sc.width,Math.random()*sc.height,Math.random()*1.4+.3,0,7);sx.fill();
+  }
+}
+drawStars();
+
+/* fireworks */
+const fc=document.getElementById("fx"),fx=fc.getContext("2d");
+function size(){fc.width=innerWidth;fc.height=innerHeight}
+size();addEventListener("resize",()=>{size();drawStars()});
+let parts=[],rockets=[];
+function burst(x,y){
+  const base=Math.random()*360,n=80;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=Math.random()*5.5+1.2;
+    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,decay:.0025+Math.random()*.0035,
+      hue:(base+Math.random()*140)%360,r:Math.random()*2+1});
+  }
+}
+function rocket(x,ty){
+  rockets.push({x,y:fc.height,ty,vy:-(9+Math.random()*3),hue:Math.random()*360});
+}
+function randRocket(){rocket(Math.random()*fc.width,fc.height*(.1+Math.random()*.35))}
+function loop(){
+  fx.globalCompositeOperation="destination-out";
+  fx.fillStyle="rgba(0,0,0,.12)";fx.fillRect(0,0,fc.width,fc.height);
+  fx.globalCompositeOperation="lighter";
+  rockets=rockets.filter(r=>{
+    r.y+=r.vy;
+    fx.fillStyle=`hsl(${r.hue},100%,75%)`;fx.beginPath();fx.arc(r.x,r.y,2.2,0,7);fx.fill();
+    if(r.y<=r.ty){burst(r.x,r.y);return false}
+    return true;
+  });
+  parts=parts.filter(q=>{
+    q.vy+=.035;q.vx*=.99;q.x+=q.vx;q.y+=q.vy;q.life-=q.decay;
+    if(q.life<=0)return false;
+    fx.fillStyle=`hsla(${q.hue},100%,62%,${q.life})`;
+    fx.beginPath();fx.arc(q.x,q.y,q.r,0,7);fx.fill();
+    return true;
+  });
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* heart animation */
+let running=false;
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+document.getElementById("btn").onclick=async()=>{
+  if(running)return;running=true;
+  cells.forEach(c=>{c.d.classList.remove("on");c.d.style.background="";c.d.style.boxShadow=""});
+  let n=0;
+  for(let i=p.length-1;i>=0;i--){
+    for(let j=0;j<16;j++){
+      const c=cells[i*16+j];
+      if(!c.on)continue;
+      const col="#e0115f";
+      c.d.classList.add("on");c.d.style.background=col;c.d.style.boxShadow=`0 0 12px ${col}`;
+      await wait(45);
+    }
+  }
+  /* finale */
+  for(let k=0;k<10;k++){randRocket();await wait(450)}
+  await wait(4000);
+  running=false;
+};
+</script>
+</body>
+</html>
